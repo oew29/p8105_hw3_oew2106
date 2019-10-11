@@ -6,25 +6,134 @@ output: github_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(p8105.datasets)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## Problem 1 ##
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r problem 1, include = FALSE}
+# Initalize Data #
+data('instacart')
 
-```{r cars}
-summary(cars)
+print(instacart)
+
+# How many aisles are there? Which aisles are the most ordered from? #
+instacart_aisles = instacart %>% 
+  group_by(aisle_id) %>% 
+  summarize(total_aisle_order = n()) %>% 
+  arrange(desc(total_aisle_order)) 
+ 
+
+# Make a plot that shows the number of items ordered in each aisle. limit to aisles with more than 10000 items. 
+
+instacart_aisles_plot = instacart_aisles %>% 
+  filter(total_aisle_order >= 10000) 
+
+order_by_aisle_plot = ggplot(instacart_aisles_plot, aes(x = aisle_id, y = total_aisle_order)) + 
+  geom_bar(stat = 'identity')
+
+# Most popular items in each aisle #
+
+instacart_item_pop = instacart %>% 
+  filter(aisle %in% c('baking ingredients', 'dog food care', 'packaged vegetables fruits') )%>%
+  group_by(aisle, product_id, product_name) %>% 
+  summarize(number_of_products = n()) %>%
+  arrange(desc(number_of_products)) %>% 
+  ungroup(product_id, product_name)%>%
+  group_by(aisle) %>%
+  arrange(aisle, desc(number_of_products)) %>%
+  mutate(product_rank = rank(number_of_products)) %>%
+  top_n(n=3) %>%
+  mutate(product_rank = rank(-product_rank)) %>%
+  select(-product_id) 
+
+item_popularity_table = knitr::kable(instacart_item_pop)
+
+# mean hour of the day for pink lady apples and coffe ice cream orders #
+
+instacart_mean_hod = instacart %>%
+  filter(product_name %in% c('Pink Lady Apples', 'Coffee Ice Cream')) %>%
+  group_by(product_name, order_dow) %>%
+  summarize(mean_hod = mean(order_hour_of_day))%>%
+  pivot_wider(names_from = order_dow, values_from = mean_hod) 
+
+mean_hod_table = knitr::kable(instacart_mean_hod)
+mean_hod_table
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+**Description:** 
+  The data set is a sample of orders from the online grocery store Instacart. The data is organized first by the order ID and then by the individual products in the order which are further categorized by product type and name. For each order ID there is a single user ID which correlates to the purchaser, as well as the last time the user purchased products from Instacart. The variable eval_set also indicates that this data set is derived from a much larger data set, and was used for predicitive analyitics likely pertaining to the purchase frequency, amount and product type. In all, there are 1,384,617 rows and 15 columns of data.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+  - There are 134 aisles, and the most items are ordered from the 83rd aisle (150609). This is narrowly larger than the 24th aisle (150473). After these two aisles, there is a dramatic drop in the number of items ordered. 
+  - `order_by_aisle_plot `
+  
+  - ` item_popularity_table`
+  
+  - ` mean_hod_table `
+
+## Problem 2 ##
+
+```{r problem 2, include = FALSE}
+library(p8105.datasets)
+data("brfss_smart2010") 
+print(brfss_smart2010)
+
+# Clean Data #
+brfss = janitor::clean_names(brfss_smart2010) %>% print()
+
+brfss = brfss %>% 
+  filter(topic == 'Overall Health') %>%
+  mutate(response = as.factor(response)) %>%
+  mutate(response = fct_relevel(response, c('Poor', 'Fair', 'Good', 'Very good', 'Excellent'))) %>%
+  arrange(response) 
+
+## 2002 Which 7 states were observed at 7 or more locations? #
+
+brfss_state_by_location = brfss %>% 
+  select(year, locationabbr, locationdesc) %>% 
+  group_by(year, locationabbr) %>% 
+  summarize(location_count = n_distinct(locationdesc)) %>%
+  filter(location_count >= 7, year %in% c(2002, 2010)) 
+
+## Excellent Responses ##
+
+brfss_excellent_resp = brfss %>% 
+  filter(response == 'Excellent') %>%
+  select(year, locationabbr, data_value) %>%
+  group_by(year, locationabbr) %>%
+  summarize(mean_data_val = mean(data_value)) %>%
+  print()
+
+spaghetti_brfss_plot = ggplot(brfss_excellent_resp, aes(y = mean_data_val, x = year, color = locationabbr))+
+  geom_line()
+spaghetti_brfss_plot
+
+# Plot for 2006/2010 responses in NY #
+
+ny_nrfss_data = brfss %>% 
+  filter(locationabbr == 'NY', year %in% c(2010, 2006)) %>%
+  group_by(year, locationdesc) %>%
+  
+  print()
+
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+ - In 2002, Connecticut, Florida, Massachusetts, North Carolina, New Jersey and Pennsylvania had 7 or more locations. In 2010, California, Colorado, FLorida, Massachusetts, Maryland, North Carolina, Nebraska, New Jersey, New York, Ohio, Pennsylvania, South Carolina, Texas and Washington all had 7 or more locations.
+ 
+- 
+
+
+
+
+
+
+
+
+
+
+
+
