@@ -13,11 +13,9 @@ library(p8105.datasets)
 
 ## Problem 1 ##
 
-```{r problem 1, include = FALSE}
+```{r problem 1}
 # Initalize Data #
 data('instacart')
-
-print(instacart)
 
 # How many aisles are there? Which aisles are the most ordered from? #
 instacart_aisles = instacart %>% 
@@ -32,7 +30,11 @@ instacart_aisles_plot = instacart_aisles %>%
   filter(total_aisle_order >= 10000) 
 
 order_by_aisle_plot = ggplot(instacart_aisles_plot, aes(x = aisle_id, y = total_aisle_order)) + 
-  geom_bar(stat = 'identity')
+  geom_bar(stat = 'identity') + 
+  ggtitle('Number of Orders per Aisle')+
+  xlab('Aisle ID')+
+  ylab('Total Number of Orders')
+order_by_aisle_plot
 
 # Most popular items in each aisle #
 
@@ -49,7 +51,9 @@ instacart_item_pop = instacart %>%
   mutate(product_rank = rank(-product_rank)) %>%
   select(-product_id) 
 
-item_popularity_table = knitr::kable(instacart_item_pop)
+
+item_popularity_table = knitr::kable(instacart_item_pop, caption = 'Top Three products ordered in each Aisle')
+item_popularity_table
 
 # mean hour of the day for pink lady apples and coffe ice cream orders #
 
@@ -59,7 +63,7 @@ instacart_mean_hod = instacart %>%
   summarize(mean_hod = mean(order_hour_of_day))%>%
   pivot_wider(names_from = order_dow, values_from = mean_hod) 
 
-mean_hod_table = knitr::kable(instacart_mean_hod)
+mean_hod_table = knitr::kable(instacart_mean_hod, caption = 'Average Hour in which Pink Lady Apples and Coffee Ice Cream is ordered throughout the Week')
 mean_hod_table
 ```
 
@@ -68,18 +72,20 @@ mean_hod_table
   The data set is a sample of orders from the online grocery store Instacart. The data is organized first by the order ID and then by the individual products in the order which are further categorized by product type and name. For each order ID there is a single user ID which correlates to the purchaser, as well as the last time the user purchased products from Instacart. The variable eval_set also indicates that this data set is derived from a much larger data set, and was used for predicitive analyitics likely pertaining to the purchase frequency, amount and product type. In all, there are 1,384,617 rows and 15 columns of data.
 
   - There are 134 aisles, and the most items are ordered from the 83rd aisle (150609). This is narrowly larger than the 24th aisle (150473). After these two aisles, there is a dramatic drop in the number of items ordered. 
-  - `order_by_aisle_plot `
   
-  - ` item_popularity_table`
+  - The resulting plot shows us what we discovered previously; that there are two aisles which stand out in total number of items ordered, and the number of orders from the other aisles drop significantly.
   
-  - ` mean_hod_table `
+  - The table showing the top three items the baking items, dog food and pacakged vegetable cateogries shows a much larger demand for pacakged vegetables than for dog food care and baking items. Dog food care had very few items being purchased each week on instacart, while baking items were moderately popular. 
+  
+  - The table of pink lady apple and coffee ice cream purchases shows a tendency for pink lady apples to be purchased earlier in the day, on average, than coffee ice cream. Additionally there seems to be an weekend effect on coffee ice cream purchases where it was purchased earlier in the day on the weekend as opposed to weekdays.
+
+
 
 ## Problem 2 ##
 
-```{r problem 2, include = FALSE}
+```{r problem 2}
 library(p8105.datasets)
 data("brfss_smart2010") 
-print(brfss_smart2010)
 
 # Clean Data #
 brfss = janitor::clean_names(brfss_smart2010) %>% print()
@@ -104,36 +110,82 @@ brfss_excellent_resp = brfss %>%
   filter(response == 'Excellent') %>%
   select(year, locationabbr, data_value) %>%
   group_by(year, locationabbr) %>%
-  summarize(mean_data_val = mean(data_value)) %>%
-  print()
+  summarize(mean_data_val = mean(data_value)) 
 
 spaghetti_brfss_plot = ggplot(brfss_excellent_resp, aes(y = mean_data_val, x = year, color = locationabbr))+
-  geom_line()
+  geom_line() +
+  ggtitle('Average Data Value by Year')+
+  ylab('Average Data Value')+
+  xlab('Year')
+
+
 spaghetti_brfss_plot
+
 
 # Plot for 2006/2010 responses in NY #
 
 ny_nrfss_data = brfss %>% 
   filter(locationabbr == 'NY', year %in% c(2010, 2006)) %>%
-  group_by(year, locationdesc) %>%
-  
-  print()
+  group_by(year, locationdesc, response) 
 
+ny_nrfss_plot = ggplot(ny_nrfss_data, aes(x = data_value, fill = factor(response))) +
+  geom_density(alpha = .5)+
+  facet_grid(~year) + 
+  viridis::scale_fill_viridis(discrete = TRUE)+
+  ggtitle('Distribution of Data Value by Categorical Response')
 
+ny_nrfss_plot
 ```
 
  - In 2002, Connecticut, Florida, Massachusetts, North Carolina, New Jersey and Pennsylvania had 7 or more locations. In 2010, California, Colorado, FLorida, Massachusetts, Maryland, North Carolina, Nebraska, New Jersey, New York, Ohio, Pennsylvania, South Carolina, Texas and Washington all had 7 or more locations.
  
-- 
+- The spaghetti plot shows the trend of data values for Excellent responses between the years of 2002 and 2010, broken down by state. The most striking thing about this graph is that there is a certain disjointness about the trends in between the lines, and Wisconsins data values are particularly lower than other states.
+
+- In the density plot, there seems to be some evening out between number of responses for category between the years 2006 and 2010. That is to say the distribution of responses in 2010 are less skewed than they are in 2006. 
 
 
 
+## Problem 3 ##
+
+```{r problem 3}
+accel_data = read_csv('./Problem 3/accel_data.csv')
+
+accel_data = janitor::clean_names(accel_data)
 
 
+# Tidy Data #
 
+accel_data_tidy = accel_data %>% 
+  pivot_longer(cols = starts_with('activity'), names_to = 'minute', values_to = 'activity') %>%
+  mutate(minute = gsub('activity_', '', minute)) %>%
+  mutate(weekday_vs_weekend = ifelse(day == 'Saturday', 'weekend', ifelse(day == 'Sunday', 'weekend', 'weekday'))) 
 
+accel_data_tidy
 
+# Table of total activity across days #
 
+aggregate_accelerometer_data = accel_data_tidy %>% 
+  group_by(week, day_id, day) %>%
+  summarize(total_activity = sum(activity)) 
 
+aggregate_accelerometer_table = knitr::kable(aggregate_accelerometer_data, caption = 'Total Activity per Day')
+aggregate_accelerometer_table
 
+# 24-Activity plot by Day #
 
+accelerometer_plot = ggplot(accel_data_tidy, aes(y = activity, x = minute, color = factor(day)))+
+  geom_line()+
+  ggtitle('Accelerometer Activity over Time')+
+  ylab('Activity')+
+  xlab('Minute of the Day')+
+  theme(axis.text.x = element_text(angle = 90))
+
+accelerometer_plot
+
+```
+
+- The resulting Tidy data set includes the variables week, day_id, day, minute, activity, and weekday_vs_weekend. The data is organized by the week, then day of that week, then minute of that day. Each day is assigned a single day ID, and for each minute there is a record of acivity in the accelerometer. The data set has 6 columns and 8,820 rows.  
+
+- The table of acelerometer data by day shows the level of activity moves up and down quite frequently. Every few days there is a spike in activity and then it returns to average activity. 
+
+- The accelerometer graph shows that there seems to be greater activity on Sunday and Thursday than the other days of the week. Ironically, the greatest activity observed occurs on a Wednesday, even though the graph tends to show the least activity occuring on a Wednesday.
